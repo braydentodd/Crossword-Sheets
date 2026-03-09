@@ -111,8 +111,7 @@ def parse_puzzle(filepath, outlet):
             {
                 "num": clue_info["num"],
                 "clue": clue_info["clue"],
-                "answer": clue_info["answer"],
-                "length": len(clue_info["answer"]),
+                "length": clue_info["len"],
             }
         )
 
@@ -127,8 +126,7 @@ def parse_puzzle(filepath, outlet):
             {
                 "num": clue_info["num"],
                 "clue": clue_info["clue"],
-                "answer": clue_info["answer"],
-                "length": len(clue_info["answer"]),
+                "length": clue_info["len"],
             }
         )
 
