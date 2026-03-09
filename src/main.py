@@ -16,6 +16,7 @@ import sys
 
 from puzzle_downloader import download_puzzle
 from sheet_formatter import create_crossword_sheet
+from script_deployer import deploy_script_config
 
 logging.basicConfig(
     level=logging.INFO,
@@ -46,8 +47,12 @@ def main():
             result = create_crossword_sheet(spreadsheet_id, puzzle)
             if result is None:
                 logger.info(f"Skipped {outlet} (already exists)")
-            else:
-                logger.info(f"✓ {outlet} done")
+                success += 1
+                continue
+
+            worksheet, script_config = result
+            deploy_script_config(spreadsheet_id, script_config)
+            logger.info(f"✓ {outlet} done")
             success += 1
         except Exception:
             logger.exception(f"✗ Failed to process {outlet}")
