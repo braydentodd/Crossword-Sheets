@@ -19,6 +19,8 @@ var COLOR_CORRECT = "#d9ead3";  // light green
 var COLOR_WRONG   = "#f4cccc";  // light red
 var COLOR_WHITE   = "#ffffff";
 var COLOR_HIGHLIGHT = "#fff2cc"; // light yellow
+var FONT_CROSSED  = "#cc0000";  // red text for completed clues
+var FONT_DEFAULT  = "#000000";  // black text (normal)
 
 // ---------------------------------------------------------------------------
 // Config - CacheService so we only hit _xw_config once per 6 hours
@@ -178,6 +180,11 @@ function onOpen() {
   ui.createMenu("Clear Colors")
     .addItem("Clear Colors", "clearColors")
     .addToUi();
+  ui.createMenu("\u2699 Options")
+    .addItem("Clear Cache", "clearCache")
+    .addItem("Setup Highlight Trigger", "setupTriggers")
+    .addItem("Test Highlight (current cell)", "testHighlight")
+    .addToUi();
 }
 
 // ---------------------------------------------------------------------------
@@ -201,6 +208,22 @@ function setupTriggers() {
     "Selection-change trigger installed! Highlighting should now work on cell clicks.",
     "Done", 5
   );
+}
+
+// ---------------------------------------------------------------------------
+// Test highlight - manually trigger highlighting for the active cell
+// ---------------------------------------------------------------------------
+
+function testHighlight() {
+  var sheet = SpreadsheetApp.getActiveSheet();
+  var cell  = sheet.getActiveCell();
+  var fakeEvent = { range: cell };
+  try {
+    _doSelectionChange(fakeEvent);
+    SpreadsheetApp.getActive().toast("Highlight applied!", "OK", 3);
+  } catch(err) {
+    SpreadsheetApp.getUi().alert("Error in highlighting:\\n" + err.message + "\\n\\nStack:\\n" + err.stack);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -310,7 +333,9 @@ function revealPuzzle() {
     for (var wk in cfg.clueRows) {
       var pos = cfg.clueRows[wk];
       if (pos) {
-        sheet.getRange(pos[0] + 1, pos[1] + 1).setFontLine("line-through");
+        var clueCell = sheet.getRange(pos[0] + 1, pos[1] + 1);
+        clueCell.setFontLine("line-through");
+        clueCell.setFontColor(FONT_CROSSED);
       }
     }
   }
@@ -387,6 +412,40 @@ function clearColors() {
 }
 
 // ---------------------------------------------------------------------------
+// Cache / Debug helpers
+// ---------------------------------------------------------------------------
+
+function clearCache() {
+  var ss    = SpreadsheetApp.getActiveSpreadsheet();
+  var cache = CacheService.getDocumentCache();
+  ss.getSheets().forEach(function(s) {
+    var name     = s.getName();
+    var baseName = _getBaseName(name);
+    cache.remove("xw_" + name);
+    cache.remove("xw_" + baseName);
+    cache.remove("xw_hl_" + name);
+    cache.remove("xw_hl_" + baseName);
+  });
+  ss.toast("Cache cleared. Config will reload on next action.", "Done", 6);
+}
+
+function debugInfo() {
+  var ss    = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getActiveSheet();
+  var cfg   = _getCfg(sheet);
+  if (!cfg) {
+    Logger.log("No config found for sheet: " + sheet.getName());
+  } else {
+    Logger.log("Config OK: " + sheet.getName());
+    Logger.log("Grid: " + cfg.gridWidth + "x" + cfg.gridHeight);
+    Logger.log("cellMap:" + !!cfg.cellMap + " wordCells:" + !!cfg.wordCells +
+               " clueRows:" + !!cfg.clueRows + " blackCells:" + !!cfg.blackCells +
+               " solutions:" + !!cfg.solutions);
+    if (cfg.solutions) Logger.log("Solution count: " + Object.keys(cfg.solutions).length);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // onEdit - strikethrough clue when its word is fully filled, remove when not
 // ---------------------------------------------------------------------------
 
@@ -442,8 +501,9 @@ function onEdit(e) {
 
   for (var si = 0; si < strikeTasks.length; si++) {
     var t = strikeTasks[si];
-    sheet.getRange(t.pos[0] + 1, t.pos[1] + 1)
-         .setFontLine(t.complete ? "line-through" : "none");
+    var clueCell = sheet.getRange(t.pos[0] + 1, t.pos[1] + 1);
+    clueCell.setFontLine(t.complete ? "line-through" : "none");
+    clueCell.setFontColor(t.complete ? FONT_CROSSED : FONT_DEFAULT);
   }
 }
 
